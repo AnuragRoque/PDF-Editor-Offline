@@ -1,0 +1,20 @@
+# Local Precision PDF Editor — runtime dependencies
+# Python 3.12+ recommended
+
+# PDF parsing, rendering and redact/insert editing engine
+PyMuPDF==1.26.7
+
+# Low-level PDF object / content-stream manipulation
+pikepdf==10.11.0
+
+# Desktop GUI framework
+PyQt6==6.11.0
+
+# Image handling for rendering and visual-diff validation
+Pillow==12.3.0
+
+# Numeric pixel-diff computation
+numpy==1.26.4
+
+# --- Development / testing (optional) ---
+pytest==9.1.1
