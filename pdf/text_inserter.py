@@ -5,7 +5,7 @@ Text insertion module with nearby typography style inference.
 import fitz
 from typing import Tuple, Optional, Dict, Any
 from app.core.models import EditSpec, TextSpan, ColorInfo, BBox
-from app.pdf.fonts import get_fitz_font_name
+from app.pdf.fonts import resolve_insertion_font
 from app.pdf.text_detector import extract_page_text_spans
 from app.core.logging import logger
 
@@ -54,7 +54,17 @@ def execute_add_text(
         x = spec.origin[0] if spec.origin else (spec.target_bbox.x0 if spec.target_bbox else 72.0)
         y = spec.origin[1] if spec.origin else (spec.target_bbox.y1 if spec.target_bbox else 72.0)
 
-        fitz_font = get_fitz_font_name(spec.font_name)
+        # Infer bold/italic from the target span or font name (for system-font fallback).
+        if spec.target_span:
+            is_bold = spec.target_span.is_bold
+            is_italic = spec.target_span.is_italic
+        else:
+            font_lower = spec.font_name.lower()
+            is_bold = "bold" in font_lower or "black" in font_lower or "heavy" in font_lower
+            is_italic = "italic" in font_lower or "oblique" in font_lower
+
+        # Resolve a font that preserves the original face (embedded > system > base-14).
+        fitz_font = resolve_insertion_font(doc, page, spec, is_bold=is_bold, is_italic=is_italic)
         color_tuple = (spec.color.r, spec.color.g, spec.color.b) if spec.color else (0.0, 0.0, 0.0)
         font_size = spec.manual_font_size or spec.font_size
 

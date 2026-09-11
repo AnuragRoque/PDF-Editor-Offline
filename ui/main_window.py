@@ -303,8 +303,22 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Edit Passed Validation", msg)
             self.statusbar.showMessage(f"Edit committed via strategy '{strat.value}'. Unexpected diffs: {report.unexpected_diff_pixels}.")
         else:
-            QMessageBox.warning(self, "Validation Failure", f"Edit failed validation layers.\nRolling back to last good source state.")
-            self.statusbar.showMessage("Edit rolled back due to validation failure.")
+            # Surface exactly which validation layers failed and why.
+            failed_lines = []
+            if report and report.layers:
+                for name, layer in report.layers.items():
+                    if not layer.passed:
+                        detail = layer.errors[0] if layer.errors else "failed"
+                        failed_lines.append(f"  {name}: {detail}")
+            detail_text = "\n".join(failed_lines) if failed_lines else "  (no layer detail available)"
+            QMessageBox.warning(
+                self,
+                "Validation Failure",
+                "Edit failed validation and was rolled back to the last good state.\n\n"
+                f"Failed layers:\n{detail_text}"
+            )
+            failed_names = ", ".join(l.split(":")[0].strip() for l in failed_lines) or "unknown"
+            self.statusbar.showMessage(f"Edit rolled back — failed: {failed_names}.")
 
     def _on_undo(self):
         if self.history and self.history.can_undo():

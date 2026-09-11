@@ -8,7 +8,12 @@ from typing import Tuple, Optional
 from app.core.models import EditSpec, StrategyType, BBox, ColorInfo
 from app.core.exceptions import PDFEditorError, FontError
 from app.pdf.content_stream import patch_content_stream_text
-from app.pdf.fonts import get_fitz_font_name, clean_font_name
+from app.pdf.fonts import (
+    get_fitz_font_name,
+    clean_font_name,
+    extract_embedded_font,
+    resolve_insertion_font,
+)
 from app.pdf.geometry import check_text_overflow, calculate_fit_font_size
 from app.core.logging import logger
 
@@ -68,7 +73,12 @@ def execute_replace_strategy(
             return (False, strategy, f"Invalid page number {spec.page_num}.")
 
         page = doc[spec.page_num]
-        
+
+        # Extract the original embedded font program BEFORE redaction, because
+        # apply_redactions can strip the (now-unused) font from page resources.
+        orig_font_name = spec.target_span.font_name if spec.target_span else spec.font_name
+        embedded_buffer, _ext = extract_embedded_font(doc, page, orig_font_name)
+
         # Calculate tight baseline redaction rect to avoid destroying adjacent lines
         rect = compute_tight_redact_rect(spec)
 
@@ -91,7 +101,11 @@ def execute_replace_strategy(
             is_italic = "italic" in font_lower or "oblique" in font_lower
 
         font_size = spec.manual_font_size or spec.font_size
-        fitz_font = get_fitz_font_name(spec.font_name, is_bold=is_bold, is_italic=is_italic)
+
+        # Resolve a font that preserves the original face (embedded > system > base-14).
+        fitz_font = resolve_insertion_font(
+            doc, page, spec, is_bold=is_bold, is_italic=is_italic, embedded_buffer=embedded_buffer
+        )
 
         # Color
         color_tuple = (0, 0, 0)

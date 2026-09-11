@@ -8,6 +8,18 @@ from enum import Enum
 import uuid
 import time
 
+# PyMuPDF span font_flags bit masks (see get_text("dict") span "flags").
+#   bit 0 (1)  = superscripted
+#   bit 1 (2)  = italic
+#   bit 2 (4)  = serifed
+#   bit 3 (8)  = monospaced
+#   bit 4 (16) = bold
+FONT_FLAG_SUPERSCRIPT = 1
+FONT_FLAG_ITALIC = 2
+FONT_FLAG_SERIF = 4
+FONT_FLAG_MONOSPACE = 8
+FONT_FLAG_BOLD = 16
+
 @dataclass
 class BBox:
     x0: float
@@ -106,11 +118,13 @@ class TextSpan:
 
     @property
     def is_bold(self) -> bool:
-        return bool(self.font_flags & 2) or "bold" in self.font_name.lower()
+        name = self.font_name.lower()
+        return bool(self.font_flags & FONT_FLAG_BOLD) or "bold" in name or "black" in name or "heavy" in name
 
     @property
     def is_italic(self) -> bool:
-        return bool(self.font_flags & 1) or "italic" in self.font_name.lower() or "oblique" in self.font_name.lower()
+        name = self.font_name.lower()
+        return bool(self.font_flags & FONT_FLAG_ITALIC) or "italic" in name or "oblique" in name
 
     def to_dict(self) -> Dict[str, Any]:
         return {
